@@ -1,4 +1,6 @@
 const express = require('express');
+const cheerio = require('cheerio');
+const request = require('request');
 const crypto = require('crypto');
 const app = express();
 
@@ -32,6 +34,30 @@ app.use((req, res, next) => {
 
   DIDcache.push(deviceId);
   next();
+});
+
+const cache = {};
+
+app.get('/prerender', (req, res) => {
+  const url = req.query.url;
+  if (!url) {
+    return res.sendStatus(400);
+  }
+
+  if (cache[url]) {
+    return res.send(cache[url]);
+  }
+
+  request(url, (error, response, body) => {
+    if (error || response.statusCode !== 200) {
+      return res.sendStatus(500);
+    }
+
+    const $ = cheerio.load(body);
+    const html = $.html();
+    cache[url] = html;
+    res.send(html);
+  });
 });
 
 // Set the routes for the app
